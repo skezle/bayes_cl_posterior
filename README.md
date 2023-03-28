@@ -10,9 +10,13 @@ We use a conda virtual environment for the experiments with HMC and for the Prot
 
 ## Running HMC for CL
 
-To run the continual learning experiments over the toy 2-d dataset (Fig. 3) from  the paper using HMC with a GMM density estimator over samples: 
+To run the continual learning experiments over the toy 2-d dataset (Fig. 3) from  the paper using HMC with a GMM density estimator over samples:
 
-`python main.py --seed=0 --dataset=toy_gaussians --mixture_of_gaussians --hid_dim=10 --n_chains=20 --n_runs=1 --n_samples=5000 --max_n_comps=500 --tag=mog_tg_s0`
+`python main.py --seed=0 --dataset=toy_cont_gaussians --mixture_of_gaussians --hid_dim=10 --n_chains=20 --n_runs=1 --n_samples=5000 --max_n_comps=500 --tag=mog_tg_s0`
+
+To run the continual learning experiments over the toy 2-d dataset (Fig. 3) from the paper using HMC with normalizing flow prior over HMC samples:
+
+`python main.py --seed=0 --dataset=toy_continuous_gaussians --flow --hid_dim=10 --n_chains=10 --n_runs=1 --n_samples=5000 --tag=flow_tcg_test`
 
 ## Prototypical Bayesian Continual Learning
 
