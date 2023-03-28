@@ -124,7 +124,7 @@ class SplitMnistGenerator():
             return next_x_train, next_y_train, next_x_test, next_y_test, next_x_val, next_y_val
 
 class SplitCIFAR10Generator(SplitMnistGenerator):
-    def __init__(self, val=False, cl3=False):
+    def __init__(self, val=False, cl3=False, data_aug=False):
 
         super(SplitCIFAR10Generator, self).__init__(cl3=cl3, fashion=False, one_hot=True)
         self.val = val
@@ -132,12 +132,26 @@ class SplitCIFAR10Generator(SplitMnistGenerator):
 
         # airplane, automobile, bird, cat, deer, dog, frog, horse, ship, truck
 
-        transform = transforms.Compose(
-            [transforms.ToTensor(),
-             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+        mean = [x / 255 for x in [125.3, 123.0, 113.9]]
+        std = [x / 255 for x in [63.0, 62.1, 66.7]]
+        # elif dataset == 'cifar100':
+        #     mean = [x / 255 for x in [129.3, 124.1, 112.4]]
+        #     std = [x / 255 for x in [68.2, 65.4, 70.4]]
 
-        trainset = datasets.CIFAR10(root='data', train=True, download=True, transform=transform)
-        testset = datasets.CIFAR10(root='data', train=False, download=True, transform=transform)
+
+        if data_aug:
+            train_transform = transforms.Compose(
+                [transforms.RandomHorizontalFlip(), transforms.RandomCrop(32, padding=4), transforms.ToTensor(),
+                 transforms.Normalize(mean, std)])
+        else:
+            train_transform = transforms.Compose(
+                [transforms.ToTensor(), transforms.Normalize(mean, std)])
+
+        test_transform = transforms.Compose(
+            [transforms.ToTensor(), transforms.Normalize(mean, std)])
+
+        trainset = datasets.CIFAR10(root='data', train=True, download=True, transform=train_transform)
+        testset = datasets.CIFAR10(root='data', train=False, download=True, transform=test_transform)
         train_data, val_data = torch.utils.data.random_split(trainset, [len(trainset) - 10000, 10000],
                                                              generator=torch.Generator().manual_seed(42))
         cifar10_testloader = DataLoader(testset, batch_size=len(testset), shuffle=False, num_workers=0)
@@ -170,18 +184,29 @@ class SplitCIFAR10Generator(SplitMnistGenerator):
         return self.X_train.shape[0], self.y_dim
 
 class SplitCIFAR100Generator():
-    def __init__(self, cl3=True, one_hot=True, max_iter=10):
+    def __init__(self, cl3=True, one_hot=True, max_iter=10, data_aug=False):
 
         # train, val, test (40000, 3072) (10000, 3072) (10000, 3072)
         self.cl3 = cl3
         self.one_hot = one_hot
 
-        transform = transforms.Compose(
-            [transforms.ToTensor(),
-             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
-        trainset = datasets.CIFAR10(root='data', train=True, download=True, transform=transform)
-        testset = datasets.CIFAR10(root='data', train=False, download=True, transform=transform)
+        mean = [x / 255 for x in [129.3, 124.1, 112.4]]
+        std = [x / 255 for x in [68.2, 65.4, 70.4]]
+
+        if data_aug:
+            train_transform = transforms.Compose(
+                [transforms.RandomHorizontalFlip(), transforms.RandomCrop(32, padding=4), transforms.ToTensor(),
+                 transforms.Normalize(mean, std)])
+        else:
+            train_transform = transforms.Compose(
+                [transforms.ToTensor(), transforms.Normalize(mean, std)])
+
+        test_transform = transforms.Compose(
+            [transforms.ToTensor(), transforms.Normalize(mean, std)])
+
+        trainset = datasets.CIFAR10(root='data', train=True, download=True, transform=train_transform)
+        testset = datasets.CIFAR10(root='data', train=False, download=True, transform=test_transform)
         train_data, val_data = torch.utils.data.random_split(trainset, [len(trainset) - 10000, 10000],
                                                              generator=torch.Generator().manual_seed(42))
         cifar10_testloader = DataLoader(testset, batch_size=len(testset), shuffle=False, num_workers=0)
@@ -468,113 +493,6 @@ class MnistGenerator():
         x_val = deepcopy(self.X_val)
         y_val = np.eye(10)[self.val_label]
         return x_train, y_train, x_test, y_test, x_val, y_val
-
-class _ToyGaussiansContGenerator():
-    def __init__(self, N, cl3, flatten_labels):
-        self.N = N
-        self.cur_iter = 0
-        self.max_iter = 5
-        self.y_dim = 10 if cl3 else 2
-        self.cl3 = cl3
-        self.flatten_labels = flatten_labels
-
-        self.means = {
-            0: [(0, 4.5), (1, 3)],
-            1: [(2, 6), (2, 4)],
-            2: [(4, 5), (3, 3)],
-            3: [(5, 4), (5, 2)],
-            4: [(6, 5), (7, 3.5)],
-        }
-        self.variances = {
-            0: [(0.01, 0.15), (0.01, 0.1)],
-            1: [(0.2, 0.012), (0.08, 0.05)],
-            2: [(0.01, 0.1), (0.01, 0.1)],
-            3: [(0.1, 0.05), (0.2, 0.01)],
-            4: [(0.01, 0.1), (0.01, 0.15)],
-        }
-
-    def get_dims(self):
-        return 2, self.y_dim
-
-    def next_task(self):
-        if self.cur_iter >= self.max_iter:
-            raise Exception('Number of tasks exceeded!')
-
-        x_train, x_test, x_val = [], [], []
-        y_train, y_test, y_val = [], [], []
-
-        for i in range(2): # two datasets per task
-            x, y = self.means[self.cur_iter][i]
-            var1, var2 = self.variances[self.cur_iter][i]
-            cov = np.array([[var1, 0], [0, var2]])
-            x_train.append(np.random.multivariate_normal(
-                np.array([x, y]),
-                cov,
-                int(self.N),
-            ))
-            x_test.append(np.random.multivariate_normal(
-                np.array([x, y]),
-                cov,
-                int(self.N / 4),
-            ))
-            x_val.append(np.random.multivariate_normal(
-                np.array([x, y]),
-                cov,
-                int(self.N / 4),
-            ))
-            y_train.append(np.full(self.N, 2 * self.cur_iter + i if self.cl3 else i))
-            y_test.append(np.full(int(self.N / 4), 2 * self.cur_iter + i if self.cl3 else i))
-            y_val.append(np.full(int(self.N / 4), 2 * self.cur_iter + i if self.cl3 else i))
-
-        x_train = np.concatenate(x_train)
-        y_train = np.concatenate(y_train).reshape(-1, 1)
-        n, d = self.get_dims()
-        y_train_1d = np.copy(y_train)
-        y_train = np.zeros((y_train_1d.shape[0], d))
-        if self.cl3:
-            y_train = np.eye(10)[y_train_1d.reshape(-1)]
-        else:
-            y_train[:, 0] = y_train_1d.reshape(-1)
-            y_train[:, 1] = 1 - y_train_1d.reshape(-1)
-        perm_inds = list(range(x_train.shape[0]))
-        np.random.shuffle(perm_inds)
-        x_train = x_train[perm_inds, :]
-        y_train = y_train[perm_inds, :]
-
-        x_test = np.concatenate(x_test)
-        y_test = np.concatenate(y_test)
-        y_test_1d = np.copy(y_test)
-        y_test = np.zeros((y_test_1d.shape[0], d))
-        if self.cl3:
-            y_test = np.eye(10)[y_test_1d.reshape(-1)]
-        else:
-            y_test[:, 0] = y_test_1d.reshape(-1)
-            y_test[:, 1] = 1 - y_test_1d.reshape(-1)
-        perm_inds = list(range(x_test.shape[0]))
-        np.random.shuffle(perm_inds)
-        x_test = x_test[perm_inds, :]
-        y_test = y_test[perm_inds, :]
-
-        x_val = np.concatenate(x_val)
-        y_val = np.concatenate(y_val)
-        y_val_1d = np.copy(y_val)
-        y_val = np.zeros((y_val_1d.shape[0], d))
-        if self.cl3:
-            y_val = np.eye(10)[y_val_1d.reshape(-1)]
-        else:
-            y_val[:, 0] = y_val_1d.reshape(-1)
-            y_val[:, 1] = 1 - y_val_1d.reshape(-1)
-        perm_inds = list(range(x_val.shape[0]))
-        np.random.shuffle(perm_inds)
-        x_val = x_val[perm_inds, :]
-        y_val = y_val[perm_inds, :]
-
-        self.cur_iter += 1
-
-        if self.flatten_labels:
-            return x_train, y_train.argmax(1), x_test, y_test.argmax(1), x_val, y_val.argmax(1)
-        else:
-            return x_train, y_train, x_test, y_test, x_val, y_val
 
 class ToyGaussiansContGenerator():
     def __init__(self, max_iter=5, num_samples=2000, option=0, flatten_labels=True):

@@ -1467,7 +1467,7 @@ def sample_model(model, x, y,
             normalizing_const=normalizing_const,  device = device
         )
     else:
-        print("w prior")
+        print("Using custom prior.")
         log_prob_func = define_model_log_prob_w_prior(
             model, model_loss, x, y, prior, params_flattened_list, params_shape_list,
             tau_list, tau_out, normalizing_const=normalizing_const, device=device, debug=debug,
@@ -1677,7 +1677,7 @@ def predict_model(model, samples, x = None, y = None, test_loader = None, model_
                     device = samples[0].device,
                 )
             else:
-                print("w prior")
+                print("HMC with prior")
                 log_prob_func = define_model_log_prob_w_prior(
                     model,
                     model_loss,
