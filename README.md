@@ -40,6 +40,16 @@ For Split CIFAR100:
 
 Thanks to the maintainers of the [hamiltorch](https://github.com/AdamCobb/hamiltorch) and the [MOCA](https://github.com/StanfordASL/moca) paper from which the implementation of PCOC I use for Prototypical Bayesian CL.
 
+## Citation
+
+```
+@article{kessler2023sequential,
+  title={On Sequential Bayesian Inference for Continual Learning},
+  author={Kessler, Samuel and Cobb, Adam and Rudner, Tim GJ and Zohren, Stefan and Roberts, Stephen J},
+  journal={arXiv preprint arXiv:2301.01828},
+  year={2023}
+}
+```
 
 
 
